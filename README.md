@@ -39,6 +39,14 @@ WorkBuddy 账号的本地后勤台：多账号名册、批量打卡、猫猫旅�
 注意 `sips`/截图工具带出的 JPEG 若手工改过段结构，可能出现「sips 读得出、WebKit 解不出」的空白渲染，
 所以名片一律用 PNG。
 
+## 安装包
+
+各平台构建产物在 [Releases](https://github.com/hindleycheng/more/releases)：
+`More_<版本>_aarch64.dmg`（Apple 芯片）、`More_<版本>_x64.dmg`（Intel）、
+`More_<版本>_x64-setup.exe`（Windows 安装包）、`More.exe`（Windows 免安装绿色版，需 WebView2 运行时）。
+由 `.github/workflows/release.yml` 在打 tag 时自动构建。注意 macOS runner 按 10 倍计入
+GitHub Actions 免费额度，手动重复触发前留意配额。
+
 ## 构建
 
 ```bash
