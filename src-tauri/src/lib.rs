@@ -110,10 +110,27 @@ pub fn run() {
         ));
 
     // 登录窗口被关闭/销毁时终止对应 OAuth 会话，避免前端弹窗卡在 pending。
+    // 主窗口点 X 不退出，收进托盘继续跑（打卡/旅行托管靠进程活着）：
+    // 真正退出走托盘菜单「退出 More」。macOS 没有托盘（用 Dock），保持原生关闭即退出。
     builder = builder.on_window_event(|window, event| {
         match event {
             tauri::WindowEvent::Destroyed => oauth::on_window_event(window.label(), true),
-            tauri::WindowEvent::CloseRequested { .. } => oauth::on_window_event(window.label(), false),
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                let label = window.label();
+                // macOS 没有托盘（用 Dock），保持原生「关闭即退出」；
+                // 其余平台点 X 收进托盘，退出走托盘菜单。这里用运行时判断而不是 #[cfg]：
+                // cfg 写在 match 臂里的块语句上时会被静默剥离，行为对不上源码（实测踩过）。
+                let hide_to_tray_on_close =
+                    crate::platform::platform_name() != "macos" && label == crate::webview::MAIN_LABEL;
+                tracing::info!("CloseRequested: label={label} hide_to_tray={hide_to_tray_on_close}");
+                if hide_to_tray_on_close {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    tracing::info!("已收进托盘（退出请用托盘菜单）");
+                    return;
+                }
+                oauth::on_window_event(label, false)
+            }
             _ => {}
         }
     });
