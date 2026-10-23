@@ -30,20 +30,20 @@ WorkBuddy 账号的本地后勤台：多账号名册、批量打卡、猫猫旅�
 
 ## 微信名片（作者私有资源）
 
-侧栏底部是**可点击的微信名片**：缩略图读 `src/assets/wechat-qr.png`（二维码方图），
-点开弹出大图，大图读 `src/assets/wechat-card.png`（完整名片：头像 / 昵称 / 二维码 / 说明）。
-**这两个文件都被 .gitignore 排除，不入库**——它们是个人隐私，公开仓库里不该有。
-仓库里带的是 `wechat-card.placeholder.png` 占位图，`npm run build` / `npm run dev` 前会自动
-`node scripts/prepare-assets.mjs`：本地没有真图就用占位图顶上，所以别人 clone 下来照样能构建，
-只是看到的是占位图。
+侧栏底部是**可点击的微信名片**：缩略图是 `src/assets/wechat-card.png` 里裁出的二维码（CSS 定位裁切，
+`nest.css` 的 `.cn-qr-frame`），点开弹出完整名片大图。**这个文件被 .gitignore 排除，不入库**——
+它是个人隐私，公开仓库里不该有。仓库里带的是 `wechat-card.placeholder.png` 占位图，
+`npm run build` / `npm run dev` 前会自动 `node scripts/prepare-assets.mjs`：本地没有真名片就用占位图顶上，
+所以别人 clone 下来照样能构建，只是看到的是占位图。
 
-换成自己的名片：
-
-1. 完整名片（竖图）→ `src/assets/wechat-card.png`，弹窗用；
-2. 二维码方图（正方形裁切，四周留白边）→ `src/assets/wechat-qr.png`，侧栏缩略图用。
+换成自己的名片：把竖图（头像 + 二维码 + 说明）放到 `src/assets/wechat-card.png`，并按 `nest.css`
+里 `.cn-qr-frame` 的注释调整裁切偏移即可。
 
 注意 `sips`/截图工具带出的 JPEG 若手工改过段结构，可能出现「sips 读得出、WebKit 解不出」的空白渲染，
 所以一律用**真 PNG**（JPEG 改后缀无效，必须真的转码）。
+
+> 公开 Release 里带的是占位图，这是有意为之：真名片只留在本机构建。想让 CI 产物也带名片，
+> 在仓库 Secrets 里配 `WECHAT_CARD_B64`（base64 后的 PNG），`.github/workflows/release.yml` 会自动还原。
 
 ## 安装包
 

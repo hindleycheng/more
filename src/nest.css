@@ -671,28 +671,39 @@ html[data-cn="dark"] {
   cursor: zoom-in;
   text-align: center;
 }
-.cn-qr-btn:hover .cn-qr {
+.cn-qr-btn:hover .cn-qr-frame {
   transform: translateY(-1px);
   box-shadow: var(--shadow);
+}
+.cn-qr-frame {
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 .cn-qr-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
   border-radius: 14px;
 }
-/* 名片是竖图（头图 + 二维码 + 说明），侧栏只露出中间那块二维码：
-   正方形裁切 + object-position 居中，扫码才够清楚。 */
-.cn-qr {
-  width: 116px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 12px;
-  background: #fff;
+/* 名片是竖图（头图 + 二维码 + 说明），侧栏只露出中间那块二维码。
+   不另存二维码裁切图——少一张私有资产就少一处「忘了一起放进去」的坑。
+   名片 600x762 中二维码约在 x87..512 / y201..626，按比例放大平移到方框里。 */
+.cn-qr-frame {
   display: block;
+  width: 116px;
+  height: 116px;
   margin: 0 auto 6px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
   border: 1px solid var(--line);
   box-shadow: var(--shadow-sm);
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.cn-qr {
+  position: absolute;
+  width: 164px; /* 600 * (116/425) */
+  left: -24px; /* -87 * (116/425) */
+  top: -55px; /* -201 * (116/425) */
+  transition: transform 0.16s ease;
 }
 .cn-qr-cap {
   display: block;

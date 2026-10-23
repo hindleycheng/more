@@ -1,7 +1,6 @@
 // More 通用 UI 组件与格式化：猫脸、倒计时、地点插画、数字与日期。
 import { useEffect, useState } from "react";
 import wechatCard from "./assets/wechat-card.png";
-import wechatQr from "./assets/wechat-qr.png";
 
 /** 猫脸：纯 SVG，随状态换表情（睡觉 / 出门 / 回来 / 饿了）。 */
 export function CatFace({
@@ -184,12 +183,14 @@ export function ContactCard() {
         title="点开看大图，扫码加我微信"
         aria-label="打开微信二维码"
       >
-        <img
-          src={wechatQr}
-          alt="作者微信二维码"
-          className="cn-qr"
-          onError={() => setBroken(true)}
-        />
+        <span className="cn-qr-frame">
+          <img
+            src={wechatCard}
+            alt="作者微信二维码"
+            className="cn-qr"
+            onError={() => setBroken(true)}
+          />
+        </span>
         <span className="cn-qr-cap">
           {broken ? "名片图丢了，点这里试试" : "扫这个加我微信 · 点开看大图"}
         </span>

@@ -2,7 +2,6 @@ node_modules/
 
 # 作者私人微信名片：只留在本机，不进版本库
 src/assets/wechat-card.png
-src/assets/wechat-qr.png
 
 dist/
 src-tauri/target/
