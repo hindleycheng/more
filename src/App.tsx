@@ -1,6 +1,7 @@
 import { Component, useEffect, useMemo, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { ConfigProvider, Layout, theme as antdTheme } from "antd";
+import { invoke } from "@tauri-apps/api/core";
 import zhCN from "antd/locale/zh_CN";
 import type { ThemeConfig } from "antd";
 import { useStore } from "./store";
@@ -94,6 +95,14 @@ export default function App() {
   const sysDark = useSystemDark();
 
   useEffect(() => {
+    // 首帧渲染完再回报：后端据此判定 WebView2 是否真的把界面画出来了。
+    // 超时没回报会触发软件渲染兜底，所以这里失败也不能阻塞界面。
+    requestAnimationFrame(() => {
+      invoke("frontend_ready").catch(() => {});
+    });
+  }, []);
+
+  useEffect(() => {
     void init();
   }, [init]);
 
@@ -176,29 +185,32 @@ export default function App() {
             </div>
           </div>
 
-          <div className="cn-nav-group">猫 窝</div>
-          {PRIMARY.map((m) => (
-            <button
-              key={m.key}
-              className={`cn-nav-item ${active === m.key ? "on" : ""}`}
-              onClick={() => setActive(m.key)}
-            >
-              <span className="cn-nav-ico">{m.icon}</span>
-              {m.label}
-            </button>
-          ))}
+          {/* 导航单独滚动：底部名片固定在侧栏底部，窗口矮的时候也不会把二维码挤出可视区。 */}
+          <nav className="cn-side-nav">
+            <div className="cn-nav-group">猫 窝</div>
+            {PRIMARY.map((m) => (
+              <button
+                key={m.key}
+                className={`cn-nav-item ${active === m.key ? "on" : ""}`}
+                onClick={() => setActive(m.key)}
+              >
+                <span className="cn-nav-ico">{m.icon}</span>
+                {m.label}
+              </button>
+            ))}
 
-          <div className="cn-nav-group">工 具 间</div>
-          {UTILITY.map((m) => (
-            <button
-              key={m.key}
-              className={`cn-nav-item ${active === m.key ? "on" : ""}`}
-              onClick={() => setActive(m.key)}
-            >
-              <span className="cn-nav-ico">{m.icon}</span>
-              {m.label}
-            </button>
-          ))}
+            <div className="cn-nav-group">工 具 间</div>
+            {UTILITY.map((m) => (
+              <button
+                key={m.key}
+                className={`cn-nav-item ${active === m.key ? "on" : ""}`}
+                onClick={() => setActive(m.key)}
+              >
+                <span className="cn-nav-ico">{m.icon}</span>
+                {m.label}
+              </button>
+            ))}
+          </nav>
 
           <div className="cn-side-foot">
             <ContactCard />

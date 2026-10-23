@@ -15,11 +15,70 @@ mod state;
 mod usage;
 mod vault;
 mod wbauth;
+mod webview;
 
-use std::sync::Arc;
+use std::io::Write;
+use std::sync::{Arc, Mutex};
 
 use state::AppState;
 use tauri::Manager;
+
+/// 日志落盘：数据目录下 logs/more.log（超过 2MB 滚动为 more.prev.log）。
+///
+/// 未签名的小工具收不到崩溃上报，出问题时用户能给出的唯一线索就是这份日志；
+/// 之前只注册了 tracing 却没有 subscriber，日志全被丢弃，Windows 上排查基本上是盲猜。
+fn init_logging() {
+    let dir = platform::more_paths().logs_dir.clone();
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("more.log");
+    if let Ok(md) = std::fs::metadata(&path) {
+        if md.len() > 2 * 1024 * 1024 {
+            let _ = std::fs::rename(&path, dir.join("more.prev.log"));
+        }
+    }
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .ok()
+        .map(|f| Arc::new(Mutex::new(f)));
+
+    struct FileWriter(Arc<Mutex<std::fs::File>>);
+    struct FileGuard(Arc<Mutex<std::fs::File>>);
+    impl Write for FileGuard {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            match self.0.lock() {
+                Ok(mut f) => f.write(buf),
+                Err(_) => Ok(buf.len()),
+            }
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            match self.0.lock() {
+                Ok(mut f) => f.flush(),
+                Err(_) => Ok(()),
+            }
+        }
+    }
+    impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for FileWriter {
+        type Writer = FileGuard;
+        fn make_writer(&'a self) -> Self::Writer {
+            FileGuard(self.0.clone())
+        }
+    }
+
+    let builder = tracing_subscriber::fmt()
+        .with_ansi(false)
+        .with_max_level(tracing::Level::INFO);
+    match file {
+        Some(f) => {
+            let _ = builder.with_writer(FileWriter(f)).try_init();
+            tracing::info!("=== 启动 More {} ({}) ===", env!("CARGO_PKG_VERSION"), platform::platform_name());
+        }
+        None => {
+            let _ = builder.try_init();
+        }
+    }
+}
 
 /// 从隐藏/托盘状态唤回主窗口：显示 + 取消最小化 + 抢焦点。跨平台一致。
 fn show_main_window(app: &tauri::AppHandle) {
@@ -32,6 +91,10 @@ fn show_main_window(app: &tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 路径与日志必须先就绪：后面所有模块都要写数据目录。
+    platform::init_paths();
+    init_logging();
+
     let mut builder = tauri::Builder::default();
 
     // 单实例：已缩到托盘时再次双击 exe，不新起进程，而是唤回已有主窗口。
@@ -59,6 +122,13 @@ pub fn run() {
         platform::init_paths();
         let app_state = Arc::new(AppState::load()?);
         app.manage(app_state.clone());
+
+        // 主窗口在代码里建（不再由 tauri.conf.json 声明）：只有这样才能在
+        // WebView2 起不来时改参数重建，而不是给用户留一屏白底。详见 webview.rs。
+        if webview::create_main(app.handle()).is_none() {
+            tracing::error!("主窗口创建失败：默认与安全模式都没能建起 WebView2");
+        }
+        webview::spawn_watchdog(app.handle().clone());
 
         // More 的 token 主密钥由钥匙串保管，不再需要历史上「钥匙串 → vault」的单向迁移。
 
@@ -106,7 +176,9 @@ pub fn run() {
             let quit_i = MenuItem::with_id(app, "quit", "退出 More", true, None::<&str>)?;
             let tray_menu = Menu::with_items(app, &[&show_i, &quit_i])?;
             let _tray = TrayIconBuilder::new()
-                .icon(tauri::include_image!("icons/icon.png"))
+                // Windows 托盘按 32×32 取图：直接喂 512 的 icon.png 会被系统
+                // 缩放出毛边，这里换成已经准备好尺寸的文件。
+                .icon(tauri::include_image!("icons/32x32.png"))
                 .tooltip("More")
                 .title("More")
                 .menu(&tray_menu)
@@ -134,6 +206,7 @@ pub fn run() {
 
     builder = builder.invoke_handler(tauri::generate_handler![
         commands::app_info,
+        commands::frontend_ready,
         commands::hide_to_tray,
         commands::get_settings,
         commands::save_settings,

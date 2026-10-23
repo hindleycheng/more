@@ -75,9 +75,20 @@ html[data-cn="dark"] {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  /* min-height:0 让中间那段可以真正收缩并滚动，否则整栏会被内容顶出窗口。 */
+  min-height: 0;
   padding: 18px 14px 14px;
   border-right: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+.cn-side-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -4px;
+  padding: 0 4px;
+  scrollbar-width: thin;
 }
 .cn-brand {
   display: flex;
@@ -134,8 +145,10 @@ html[data-cn="dark"] {
   font-size: 15px;
 }
 .cn-side-foot {
-  margin-top: auto;
-  padding: 12px 10px 2px;
+  margin-top: 10px;
+  flex: 0 0 auto;
+  padding: 10px 10px 2px;
+  border-top: 1px solid var(--line);
   font-size: 11px;
   line-height: 1.65;
   color: var(--faint);
@@ -658,16 +671,28 @@ html[data-cn="dark"] {
   cursor: zoom-in;
   text-align: center;
 }
+.cn-qr-btn:hover .cn-qr {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+.cn-qr-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 14px;
+}
+/* 名片是竖图（头图 + 二维码 + 说明），侧栏只露出中间那块二维码：
+   正方形裁切 + object-position 居中，扫码才够清楚。 */
 .cn-qr {
-  width: 96px;
-  height: auto;
+  width: 116px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
   border-radius: 12px;
   background: #fff;
-  padding: 4px;
   display: block;
   margin: 0 auto 6px;
   border: 1px solid var(--line);
   box-shadow: var(--shadow-sm);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 .cn-qr-cap {
   display: block;
@@ -690,18 +715,45 @@ html[data-cn="dark"] {
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow);
-  padding: 20px;
+  padding: 22px 22px 18px;
   text-align: center;
   max-width: 420px;
+  max-height: 92vh;
+  overflow: auto;
+}
+.cn-lightbox-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: 0.2px;
+}
+.cn-lightbox-sub {
+  margin: 4px 0 14px;
+  font-size: 12.5px;
+  color: var(--muted);
 }
 .cn-lightbox-img {
-  width: 300px;
-  max-width: 60vw;
+  width: 340px;
+  max-width: 72vw;
+  /* 800px 高的窗口里也要能把「提示 + 关闭」露出来。 */
+  max-height: 48vh;
   height: auto;
+  object-fit: contain;
   border-radius: 14px;
   background: #fff;
   display: block;
   margin: 0 auto 14px;
+}
+.cn-lightbox-miss {
+  width: 340px;
+  max-width: 72vw;
+  padding: 40px 18px;
+  border-radius: 14px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.7;
+  margin-bottom: 14px;
 }
 .cn-lightbox-tip {
   font-size: 12.5px;

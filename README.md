@@ -30,31 +30,70 @@ WorkBuddy 账号的本地后勤台：多账号名册、批量打卡、猫猫旅�
 
 ## 微信名片（作者私有资源）
 
-侧栏底部那张名片读的是 `src/assets/wechat-card.png`，**这个文件被 .gitignore 排除，不入库**——
-它是个人隐私，公开仓库里不该有它。仓库里带的是 `wechat-card.placeholder.png` 占位图，
-`npm run build` / `npm run dev` 前会自动 `node scripts/prepare-assets.mjs`：本地没有真名片就用占位图顶上，
-所以别人 clone 下来照样能构建，只是看到的是占位图。
+侧栏底部是**可点击的微信名片**：缩略图读 `src/assets/wechat-qr.png`（二维码方图），
+点开弹出大图，大图读 `src/assets/wechat-card.png`（完整名片：头像 / 昵称 / 二维码 / 说明）。
+**这两个文件都被 .gitignore 排除，不入库**——它们是个人隐私，公开仓库里不该有。
+仓库里带的是 `wechat-card.placeholder.png` 占位图，`npm run build` / `npm run dev` 前会自动
+`node scripts/prepare-assets.mjs`：本地没有真图就用占位图顶上，所以别人 clone 下来照样能构建，
+只是看到的是占位图。
 
-换成自己的名片：把图片放到 `src/assets/wechat-card.png`（建议 500px 宽左右、PNG 或转成 PNG）即可。
+换成自己的名片：
+
+1. 完整名片（竖图）→ `src/assets/wechat-card.png`，弹窗用；
+2. 二维码方图（正方形裁切，四周留白边）→ `src/assets/wechat-qr.png`，侧栏缩略图用。
+
 注意 `sips`/截图工具带出的 JPEG 若手工改过段结构，可能出现「sips 读得出、WebKit 解不出」的空白渲染，
-所以名片一律用 PNG。
+所以一律用**真 PNG**（JPEG 改后缀无效，必须真的转码）。
 
 ## 安装包
 
 各平台构建产物在 [Releases](https://github.com/hindleycheng/more/releases)：
 `More_<版本>_aarch64.dmg`（Apple 芯片）、`More_<版本>_x64.dmg`（Intel）、
-`More_<版本>_x64-setup.exe`（Windows 安装包）、`More.exe`（Windows 免安装绿色版，需 WebView2 运行时）。
+`More_<版本>_x64-setup.exe`（Windows 安装包，当前用户级安装、免管理员）、`More.exe`（Windows 免安装绿色版，需 WebView2 运行时）。
 由 `.github/workflows/release.yml` 在打 tag 时自动构建。注意 macOS runner 按 10 倍计入
 GitHub Actions 免费额度，手动重复触发前留意配额。
+
+Windows 包已在真实 Windows 11（x64，WebView2 Runtime 155）实机跑通主界面与托盘，
+记录见 `docs/Windows-验证记录.md`。macOS 侧未做付费签名与公证，Windows 侧未做代码签名，
+首次运行 SmartScreen 提示属正常。
+
+## Windows 白屏自愈
+
+WebView2 在少数机器上会起不来图形进程（虚拟显卡、远程桌面、安全软件拦截图形子进程），
+表现是窗口出来了、内容永远空白，且此时没有界面可以提示——界面本身就是那个没起来的东西。
+
+因此主窗口不再由 `tauri.conf.json` 声明，而是在 `src-tauri/src/webview.rs` 里创建：
+
+1. 先按默认参数创建（硬件加速）；
+2. 前端渲染首帧后回报 `frontend_ready`，视为健康；
+3. 25 秒内没回报 → 写 `webview.json` 标记「安全模式」，重启进程并追加
+   `--disable-gpu --disable-gpu-compositing`（软件渲染）重建窗口；
+4. 安全模式仍失败 → 弹原生提示说明原因并给出日志路径，而不是留一屏白底。
+
+排障时可用 `MORE_WEBVIEW_DEBUG_PORT=9333` 启动，会给 WebView2 追加
+`--remote-debugging-port`，之后可接 CDP 直接看 DOM。默认不监听任何端口。
 
 ## 构建
 
 ```bash
 npm install
-npx tauri build          # 产出 src-tauri/target/release/bundle/dmg/*.dmg
+npx tauri build          # macOS 产出 src-tauri/target/release/bundle/dmg/*.dmg
 ```
 
-需要 Rust stable 工具链（`rustup toolchain install stable`）与 Node 18+。
+Windows 上一条命令出安装包与绿色版：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-windows.ps1
+# 产物：dist-windows\More.exe 与 dist-windows\More_<版本>_x64-setup.exe
+```
+
+需要 Rust stable（`rustup toolchain install stable`）、Node 18+；Windows 另需
+MSVC Build Tools（官方推荐）与 WebView2 Runtime。
+
+Windows 用 GNU 工具链（`x86_64-pc-windows-gnu` + MinGW-w64）也能编出可运行 exe，
+但需把 `src-tauri/Cargo.toml` 的 `[lib] crate-type` 临时收成 `["rlib"]`：保持
+`cdylib` 时链接器会因导出序数超过 65535 报 `export ordinal too large`。对外发版请用 MSVC。
+
 
 ## 安装（未签名）
 
@@ -69,8 +108,11 @@ Windows 为绿色版，双击即用。详见 `docs/给朋友的安装说明.md`�
 ## 数据位置
 
 macOS `~/Library/Application Support/More`，Windows `%APPDATA%\More`。
-内含账号名册、设置、加密后的 `tokens.vault`、用量库 `more-usage.db`、本地台账 `history.json`。
+内含账号名册、设置、加密后的 `tokens.vault`、用量库 `more-usage.db`、本地台账 `history.json`、
+`logs/more.log`（运行日志，超 2MB 滚动一份 `more.prev.log`）与 `webview.json`（是否已切安全模式）。
 卸载：删除 App 与这个目录即可，不留任何东西在系统里。
+
+Windows 的 WebView2 缓存另在 `%LOCALAPPDATA%\com.more.app`，不含账号凭证，可随时删除。
 
 ## 风险声明
 

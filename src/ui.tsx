@@ -1,6 +1,7 @@
 // More 通用 UI 组件与格式化：猫脸、倒计时、地点插画、数字与日期。
 import { useEffect, useState } from "react";
 import wechatCard from "./assets/wechat-card.png";
+import wechatQr from "./assets/wechat-qr.png";
 
 /** 猫脸：纯 SVG，随状态换表情（睡觉 / 出门 / 回来 / 饿了）。 */
 export function CatFace({
@@ -151,9 +152,11 @@ export function Empty({ glyph, title, desc }: { glyph: string; title: string; de
 }
 
 /** 作者微信名片：侧栏里是缩略图，点开看大图（朋友扫码用）。
- *  图片已剥掉 EXIF/IPTC，只留 JFIF 与 ICC 色彩描述，不带拍摄时间与位置信息。 */
+ *  图片已剥掉 EXIF/IPTC，只留 JFIF 与 ICC 色彩描述，不带拍摄时间与位置信息。
+ *  必须是真 PNG：JPEG 改后缀在 WebKit 里会解出空白（实测踩过）。 */
 export function ContactCard() {
   const [open, setOpen] = useState(false);
+  const [broken, setBroken] = useState(false);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -162,17 +165,58 @@ export function ContactCard() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+  // 打开弹窗时锁掉背后页面的滚动，避免滚轮把弹窗顶走。
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   return (
     <>
-      <button className="cn-qr-btn" onClick={() => setOpen(true)} title="点开看大图，扫码加我微信">
-        <img src={wechatCard} alt="作者微信名片二维码" className="cn-qr" />
-        <span className="cn-qr-cap">扫这个加我微信 · 猫窝的问题直接找我</span>
+      <button
+        type="button"
+        className="cn-qr-btn"
+        onClick={() => setOpen(true)}
+        title="点开看大图，扫码加我微信"
+        aria-label="打开微信二维码"
+      >
+        <img
+          src={wechatQr}
+          alt="作者微信二维码"
+          className="cn-qr"
+          onError={() => setBroken(true)}
+        />
+        <span className="cn-qr-cap">
+          {broken ? "名片图丢了，点这里试试" : "扫这个加我微信 · 点开看大图"}
+        </span>
       </button>
       {open && (
-        <div className="cn-lightbox" onClick={() => setOpen(false)}>
+        <div
+          className="cn-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label="微信二维码"
+          onClick={() => setOpen(false)}
+        >
           <div className="cn-lightbox-inner" onClick={(e) => e.stopPropagation()}>
-            <img src={wechatCard} alt="作者微信名片二维码，放大版" className="cn-lightbox-img" />
+            <div className="cn-lightbox-title">加我微信</div>
+            <div className="cn-lightbox-sub">猫窝的问题、想加新功能，直接找我</div>
+            {broken ? (
+              <div className="cn-lightbox-miss">
+                名片图片没打进包里（构建时缺少 <code>src/assets/wechat-card.png</code>）。
+              </div>
+            ) : (
+              <img
+                src={wechatCard}
+                alt="作者微信二维码，放大版"
+                className="cn-lightbox-img"
+                onError={() => setBroken(true)}
+              />
+            )}
             <div className="cn-lightbox-tip">
               用微信「扫一扫」对着这个码即可。按 Esc 或点背景关闭。
             </div>

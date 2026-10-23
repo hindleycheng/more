@@ -40,6 +40,14 @@ fn now_ms() -> i64 {
     Utc::now().timestamp_millis()
 }
 
+/// 前端挂载完成回报：用于判断 WebView2 是否真的把界面渲染起来了。
+/// 超时未回报即判定白屏，由 webview::spawn_watchdog 降级到软件渲染。
+#[tauri::command]
+pub fn frontend_ready() -> R<()> {
+    crate::webview::mark_ready();
+    Ok(())
+}
+
 // ---------- 通用 / 系统 ----------
 #[tauri::command]
 pub fn app_info() -> Value {

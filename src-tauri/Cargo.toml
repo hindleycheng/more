@@ -1,6 +1,6 @@
 [package]
 name = "more"
-version = "0.1.1"
+version = "0.1.2"
 description = "猫窝 More：WorkBuddy 账号后勤（多账号、打卡、旅行托管、俸禄流水、本地反代）"
 authors = ["hindleycheng"]
 # 基于 WorkMami (https://github.com/majiabin2020/WorkMami, MIT) 改造
